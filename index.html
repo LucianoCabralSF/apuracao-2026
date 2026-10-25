@@ -107,8 +107,6 @@ tr.u-tot td{border-top:2px solid var(--ink);font-weight:700}
 .lado .cand img{width:64px;height:80px}
 .lado .cand .nm{font-size:1.15rem}
 .lado .cand .pc{font-size:1.9rem}
-.placar{cursor:pointer}
-.placar.ativo{border:2px solid var(--accent);cursor:default}
 .prog.big{height:8px}
 .brasil{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:6px}
 .fx-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
@@ -137,6 +135,8 @@ tr.u-tot td{border-top:2px solid var(--ink);font-weight:700}
 .tmapa tr.u-tot td{border-top:2px solid var(--ink);border-bottom:0}
 .tmapa tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--line) 25%,var(--surface))}
 .tmapa tbody tr.u-sel td{background:var(--accent-soft)}
+.sels{display:flex;flex-wrap:wrap;gap:8px}
+.seg2 button:disabled{opacity:.4;cursor:not-allowed}
 .seg2{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
 .seg2 button{border:0;background:none;padding:7px 14px;cursor:pointer;font-weight:600;font-size:.85rem;color:var(--muted)}
 .seg2 button[aria-pressed="true"]{background:var(--accent);color:var(--surface)}
@@ -175,7 +175,7 @@ tr.u-tot td{border-top:2px solid var(--ink);font-weight:700}
   .tmapa th:nth-child(6),.tmapa td:nth-child(6){display:none}
   .tmapa .nmL{display:none} .tmapa .nmS{display:inline}
   .tmapa th{white-space:normal}
-  .seg2{width:100%} .seg2 button{flex:1;padding:9px 6px}
+  .sels{width:100%;flex-direction:column} .seg2{width:100%} .seg2 button{flex:1;padding:9px 6px}
   .tgov th:nth-child(4),.tgov td:nth-child(4),.tgov th:nth-child(5),.tgov td:nth-child(5),.tgov .gp{display:none} .tgov .so-m{display:block;font-size:.72rem} .tgov .gv{font-size:.78rem} .tgov th:nth-child(3),.tgov td:nth-child(3){display:table-cell}
   .marca img{height:46px} .marca-t{font-size:.75rem;text-align:right}
   .tmapa th,.tmapa td{padding:7px 4px}
@@ -256,8 +256,8 @@ function placar(d, k, titulo, extra=''){
       <div class="pt">${esc(c.n)} · ${esc(c.sg)}${c.vice?' · vice: '+esc(c.vice):''}</div>
       <div class="pc">${pct(c.votos,vv)}</div><div class="vt">${fmt(c.votos)} votos</div></div></div>`).join('');
   const dif=cs.length>1?cs[0].votos-cs[1].votos:0;
-  return `<section class="panel placar ${k===st.cargo?'ativo':''}" data-cargo="${k}">
-    <div class="panel-h"><h2>${esc(titulo)}</h2><span class="${k===st.cargo?'note':'dica'}">${k===st.cargo?'detalhes abaixo':'toque para ver detalhes'}</span></div>
+  return `<section class="panel placar">
+    <div class="panel-h"><h2>${esc(titulo)}</h2></div>
     <div class="prog big"><i style="width:${parseFloat(String(s.pstn||'0').replace(',','.'))||0}%"></i></div>
     <div class="note"><b class="num">${esc(s.pst||'0')}%</b> das urnas apuradas${dif&&vv?` · diferença de <b class="num">${fmt(dif)}</b> votos`:''}${d.dt?` · atualizado às ${esc(d.ht)}`:' · apuração ainda não começou'}</div>
     <div class="duelo">${cards}</div>
@@ -349,9 +349,9 @@ async function carregarUFs(){
   if(rows.length && k===st.cargo) UFT={key:k,t:Date.now(),rows};
 }
 const carregarTabela=()=>st.modo==='uf'?carregarUFs():carregarMapa();
-const seletor=()=>`<div class="seg2" role="group" aria-label="Ver resultado"><button data-modo="mun" aria-pressed="${st.modo!=='uf'}">Por município</button><button data-modo="uf" aria-pressed="${st.modo==='uf'}">Por estado</button></div>`;
+const seletor=()=>`<div class="sels"><div class="seg2" role="group" aria-label="Cargo"><button data-cargo-sel="gov" aria-pressed="${st.cargo==='gov'}"${st.dd?.gov?'':' disabled'}>Governador</button><button data-cargo-sel="pres" aria-pressed="${st.cargo==='pres'}">Presidente</button></div><div class="seg2" role="group" aria-label="Ver resultado"><button data-modo="mun" aria-pressed="${st.modo!=='uf'}">Por município</button><button data-modo="uf" aria-pressed="${st.modo==='uf'}">Por estado</button></div></div>`;
 function blocoUFs(){
-  const tit=`<div class="panel-h"><h2>Votos por estado</h2>${seletor()}</div>`;
+  const tit=`<div class="panel-h"><h2>${esc(K().nome)} · votos por estado</h2>${seletor()}</div>`;
   if(!UFT.rows||UFT.key!==st.cargo) return `<section class="panel">${tit}<div class="note">Carregando os estados…</div></section>`;
   const rows=UFT.rows.slice().sort((x,y)=>y.vv-x.vv||x.nm.localeCompare(y.nm,'pt-BR'));
   const nome=r=>`<span class="mn">${'<i class="win" style="background:'+(r.w?cor(r.w):'transparent')+'"></i>'}<span>${esc(r.nm)}</span></span>`;
@@ -377,12 +377,12 @@ function blocoUFs(){
 }
 function blocoMapa(){
   if(st.modo==='uf') return blocoUFs();
-  if(!st.data||!MAPA.rows||MAPA.key!==st.uf+st.cargo) return `<section class="panel"><div class="panel-h"><h2>Votos por município</h2>${seletor()}</div><div class="note">Carregando os municípios…</div></section>`;
+  if(!st.data||!MAPA.rows||MAPA.key!==st.uf+st.cargo) return `<section class="panel"><div class="panel-h"><h2>${esc(K().nome)} · votos por município</h2>${seletor()}</div><div class="note">Carregando os municípios…</div></section>`;
   const cs=lerCands(st.data).sort((a,b)=>a.n.localeCompare(b.n,undefined,{numeric:true})); if(cs.length<2) return '';
   const [A,B]=cs, rows=MAPA.rows.slice().sort((x,y)=>(y.cs[A.n]+y.cs[B.n])-(x.cs[A.n]+x.cs[B.n])||x.nm.localeCompare(y.nm,'pt-BR'));
   const vence=n=>rows.filter(r=>r.cs[n]>(r.cs[n===A.n?B.n:A.n])).length;
   const tA=rows.reduce((t,r)=>t+r.cs[A.n],0), tB=rows.reduce((t,r)=>t+r.cs[B.n],0), tV=rows.reduce((t,r)=>t+r.vv,0);
-  return `<section class="panel"><div class="panel-h"><h2>Votos por município · ${esc(UFS.find(u=>u[0]===st.uf)[1])}</h2>${seletor()}</div>
+  return `<section class="panel"><div class="panel-h"><h2>${esc(K().nome)} · ${esc(UFS.find(u=>u[0]===st.uf)[1])} por município</h2>${seletor()}</div>
     <div class="mun-meta"><span><i class="win" style="background:${cor(A)}"></i><b>${esc(A.nome)}</b> vence em <b class="num">${vence(A.n)}</b></span><span><i class="win" style="background:${cor(B)}"></i><b>${esc(B.nome)}</b> vence em <b class="num">${vence(B.n)}</b></span><span>de ${rows.length} municípios</span></div>
         <div class="tmapa-wrap"><table class="tmapa"><thead><tr><th>Município</th><th class="r"><span class="nmL">${esc(A.nome)}</span><span class="nmS"><i class="win" style="background:${cor(A)}"></i>${esc(curto(A.nome))}</span></th><th class="r">%</th><th class="r"><span class="nmL">${esc(B.nome)}</span><span class="nmS"><i class="win" style="background:${cor(B)}"></i>${esc(curto(B.nome))}</span></th><th class="r">%</th><th>Placar</th><th class="r"><span class="nmL">% apuração</span><span class="nmS">% apur.</span></th></tr></thead><tbody>
     ${rows.map(r=>{ const a=r.cs[A.n]||0,b=r.cs[B.n]||0,w=a>b?A:b>a?B:null; return `<tr${r.cd===st.mun?' class="u-sel"':''}><td><span class="mn">${w?`<i class="win" style="background:${cor(w)}"></i>`:'<i class="win"></i>'}<span>${esc(r.nm)}</span></span></td>${cel(a,r.vv,A,w)}${cel(b,r.vv,B,w)}<td><div class="mbar">${r.vv?`<i style="width:${100*a/r.vv}%;background:${cor(A)}"></i><i style="width:${100*b/r.vv}%;background:${cor(B)}"></i>`:''}</div></td><td class="r num">${esc(r.pst)}%</td></tr>`; }).join('')}
@@ -397,7 +397,7 @@ function render(){
     : `<section class="panel"><div class="panel-h"><h2>Governador · ${esc(ufNome)}</h2></div><div class="note">Não há segundo turno para Governador neste estado${st.govUFs?`. Estados com 2º turno: ${st.govUFs.map(u=>UFS.find(x=>x[0]===u)?.[1]||u).join(', ')}`:''}.</div></section>`;
   const pres = st.br ? placar(st.br,'pres','Presidente · Brasil', faixaTotal(dd.pres,`Total no ${ufNome}`)) : dd.pres ? placar(dd.pres,'pres',`Presidente · ${ufNome}`) : '';
   let h=`<div class="lado">${gov}${pres}</div>`;
-  if(st.data) h+=`<h2 class="sec-t">Detalhes de ${esc(K().nome)}</h2>${blocoMapa()}`;
+  if(st.data) h+=blocoMapa();
   $('#app').innerHTML=h;
 }
 
@@ -424,7 +424,7 @@ setInterval(()=>{ const left=Math.max(0,Math.round((st.next-Date.now())/1000)); 
 /* ---------- Eventos ---------- */
 $('#app').addEventListener('change',e=>{ if(e.target.id!=='mun') return; st.mun=e.target.value; save(); carregarMun().then(render); });
 $('#app').addEventListener('toggle',e=>{ if(e.target.matches('details.falta')&&e.target.closest('.mun')) st.faltaOpen=e.target.open; },true);
-$('#app').addEventListener('click',e=>{ const md=e.target.closest('[data-modo]'); if(md){ if(st.modo!==md.dataset.modo){ st.modo=md.dataset.modo; save(); render(); carregarTabela().then(render); } return; } const pl=e.target.closest('.placar[data-cargo]'); if(pl && !e.target.closest('a,button')){ setCargo(pl.dataset.cargo); return; } const fr=e.target.closest('.frow'); if(fr){ st.mun=fr.dataset.mun; save(); carregarMun().then(render); } });
+$('#app').addEventListener('click',e=>{ const cs=e.target.closest('[data-cargo-sel]'); if(cs){ if(!cs.disabled) setCargo(cs.dataset.cargoSel); return; } const md=e.target.closest('[data-modo]'); if(md){ if(st.modo!==md.dataset.modo){ st.modo=md.dataset.modo; save(); render(); carregarTabela().then(render); } return; } const fr=e.target.closest('.frow'); if(fr){ st.mun=fr.dataset.mun; save(); carregarMun().then(render); } });
 function setCargo(c){ if(c===st.cargo) return; st.cargo=c; save();  st.data=st.dd?.[c]||null; st.munData=null; MAPA={key:'',t:0,rows:null}; render(); carregarTabela().then(render); }
 
 // Só os estados com 2º turno (para Governador); a lista é confirmada na configuração do TSE
