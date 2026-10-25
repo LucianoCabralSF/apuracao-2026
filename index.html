@@ -1,8 +1,6 @@
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>
 <title>Apuração 2º Turno 2026</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Archivo+Narrow:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" integrity="sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3" crossorigin="anonymous"></script>
 <style>
 /* Layout: placar frente a frente no topo, município + lista de pendências, mapa por município e votos por urna abaixo */
 :root{
@@ -32,9 +30,6 @@ button,select,input{font:inherit;color:inherit}
 header.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between}
 .sub{color:var(--muted);margin-top:4px}
 .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
-.seg button{border:0;background:none;padding:8px 14px;cursor:pointer;font-weight:600;font-size:.9rem}
-.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface)}
 select,input{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-weight:500}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:600}
 .btn:hover{border-color:var(--accent)}
@@ -118,6 +113,36 @@ tr.u-tot td{border-top:2px solid var(--ink);font-weight:700}
 .brasil{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:6px}
 .barra.fina{height:10px}
 .sec-t{margin-top:6px}
+.dica{font-size:.78rem;color:var(--accent);font-weight:600}
+/* ---- Celular ---- */
+@media (max-width:620px){
+  body{font-size:14px}
+  .wrap{padding-inline:12px;padding-block:12px 32px;gap:12px}
+  h1{font-size:1.45rem} h2{font-size:1.1rem}
+  .sub{font-size:.85rem}
+  header.top{gap:10px}
+  .controls{width:100%} .controls select{flex:1;min-width:0;font-size:16px} .controls .btn{padding:8px 12px}
+  .panel{padding:12px;gap:10px;border-radius:10px}
+  .lado{gap:12px}
+  .lado .duelo{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+  .lado .cand{grid-template-columns:minmax(0,1fr);text-align:center;justify-items:center;padding:10px 6px;gap:6px}
+  .lado .cand img{width:58px;height:72px}
+  .lado .cand .nm{font-size:.98rem}
+  .lado .cand .pt{font-size:.72rem}
+  .lado .cand .pc{font-size:1.65rem}
+  .lado .cand .vt{font-size:.8rem}
+  .barra{height:16px}
+  .barra-l{font-size:.72rem}
+  .mun-meta{font-size:.78rem;gap:4px 12px}
+  .mini b{font-size:1.1rem}
+  .frow{padding:10px 2px}
+  table{font-size:.8rem} th,td{padding:7px 6px}
+  .tmapa th:nth-child(3),.tmapa td:nth-child(3),.tmapa th:nth-child(5),.tmapa td:nth-child(5),.tmapa th:nth-child(8),.tmapa td:nth-child(8){display:none}
+  .tmapa .mbar{min-width:50px}
+  .tlocal td:nth-child(2){font-size:.72rem}
+  .u-form{gap:8px} .u-f select{font-size:16px}
+  .rules{font-size:.82rem}
+}
 .err-box{border:1px solid var(--bad);color:var(--bad);border-radius:10px;padding:14px;background:var(--surface)}
 </style>
 
@@ -128,10 +153,6 @@ tr.u-tot td{border-top:2px solid var(--ink);font-weight:700}
       <div class="sub">Presidente e Governador, com resultado por município, seções pendentes e votos urna por urna. Dados ao vivo do TSE.</div>
     </div>
     <div class="controls">
-      <div class="seg" role="group" aria-label="Cargo">
-        <button data-cargo="gov" aria-pressed="true">Governador</button>
-        <button data-cargo="pres" aria-pressed="false">Presidente</button>
-      </div>
       <select id="uf" aria-label="Estado"></select>
       <button class="btn" id="refresh">Atualizar</button>
     </div>
@@ -140,13 +161,13 @@ tr.u-tot td{border-top:2px solid var(--ink);font-weight:700}
   <div id="app"></div>
 
   <section class="panel" id="urnas">
-    <div class="panel-h"><h2>Votos por zona e urna</h2><span class="note">lido do boletim de cada urna, publicado pelo TSE</span></div>
+    <div class="panel-h"><h2>Votos por zona e urna · <span id="u-cargo">Governador</span></h2><span class="note">lido do boletim de cada urna, publicado pelo TSE</span></div>
     <div class="u-form">
       <label class="u-f"><span class="lbl">Município</span><select id="u-mun"></select></label>
       <label class="u-f"><span class="lbl">Zona</span><select id="u-zona"></select></label>
       <button class="btn btn-pri" id="u-go">Buscar votos</button>
     </div>
-    <div id="u-out" class="note">Escolha o município e a zona. Mostra os dois candidatos lado a lado, para o cargo selecionado no topo.</div>
+    <div id="u-out" class="note">Escolha o município e a zona. Mostra os dois candidatos lado a lado. Para trocar o cargo, toque no placar de Governador ou de Presidente.</div>
   </section>
 
   <section class="panel rules">
@@ -199,7 +220,7 @@ function placar(d, k, titulo, extra=''){
       <div class="pc">${pct(c.votos,vv)}</div><div class="vt">${fmt(c.votos)} votos</div></div></div>`).join('');
   const dif=cs.length>1?cs[0].votos-cs[1].votos:0;
   return `<section class="panel placar ${k===st.cargo?'ativo':''}" data-cargo="${k}">
-    <div class="panel-h"><h2>${esc(titulo)}</h2><span class="note">${k===st.cargo?'detalhes abaixo':'toque para ver os detalhes'}</span></div>
+    <div class="panel-h"><h2>${esc(titulo)}</h2><span class="${k===st.cargo?'note':'dica'}">${k===st.cargo?'detalhes abaixo':'toque para ver detalhes'}</span></div>
     <div class="prog big"><i style="width:${parseFloat(String(s.pstn||'0').replace(',','.'))||0}%"></i></div>
     <div class="note"><b class="num">${esc(s.pst||'0')}%</b> das urnas apuradas${dif&&vv?` · diferença de <b class="num">${fmt(dif)}</b> votos`:''}${d.dt?` · atualizado às ${esc(d.ht)}`:' · apuração ainda não começou'}</div>
     <div class="duelo">${cards}</div>
@@ -283,10 +304,10 @@ function blocoMapa(){
   const [A,B]=cs, rows=MAPA.rows.slice().sort((x,y)=>(y.cs[A.n]+y.cs[B.n])-(x.cs[A.n]+x.cs[B.n])||x.nm.localeCompare(y.nm,'pt-BR'));
   const vence=n=>rows.filter(r=>r.cs[n]>(r.cs[n===A.n?B.n:A.n])).length;
   const tA=rows.reduce((t,r)=>t+r.cs[A.n],0), tB=rows.reduce((t,r)=>t+r.cs[B.n],0), tV=rows.reduce((t,r)=>t+r.vv,0);
-  return `<section class="panel"><div class="panel-h"><h2>Quem vence em cada município</h2><button class="btn btn-pri" id="pdf-mapa">Exportar PDF dos municípios</button></div>
+  return `<section class="panel"><div class="panel-h"><h2>Quem vence em cada município</h2></div>
     <div class="mun-meta"><span><i class="win" style="background:${cor(A)}"></i><b>${esc(A.nome)}</b> vence em <b class="num">${vence(A.n)}</b></span><span><i class="win" style="background:${cor(B)}"></i><b>${esc(B.nome)}</b> vence em <b class="num">${vence(B.n)}</b></span><span>de ${rows.length} municípios</span></div>
-    <details class="falta" open><summary><span class="lbl">Votos em cada município</span></summary>
-    <div class="tbl-wrap"><table><thead><tr><th>Município</th><th class="r">${esc(A.nome)}</th><th class="r">%</th><th class="r">${esc(B.nome)}</th><th class="r">%</th><th>Placar</th><th class="r">Diferença</th><th class="r">Urnas</th></tr></thead><tbody>
+    <details class="falta"${innerWidth>620?' open':''}><summary><span class="lbl">Votos em cada município</span> <span class="dica">tabela completa</span></summary>
+    <div class="tbl-wrap"><table class="tmapa"><thead><tr><th>Município</th><th class="r">${esc(A.nome)}</th><th class="r">%</th><th class="r">${esc(B.nome)}</th><th class="r">%</th><th>Placar</th><th class="r">Diferença</th><th class="r">Urnas</th></tr></thead><tbody>
     ${rows.map(r=>{ const a=r.cs[A.n]||0,b=r.cs[B.n]||0,w=a>b?A:b>a?B:null; return `<tr${r.cd===st.mun?' class="u-sel"':''}><td>${w?`<i class="win" style="background:${cor(w)}"></i>`:'<i class="win"></i>'}${esc(r.nm)}</td><td class="r num">${fmt(a)}</td><td class="r num">${pct(a,r.vv)}</td><td class="r num">${fmt(b)}</td><td class="r num">${pct(b,r.vv)}</td><td><div class="mbar">${r.vv?`<i style="width:${100*a/r.vv}%;background:${cor(A)}"></i><i style="width:${100*b/r.vv}%;background:${cor(B)}"></i>`:''}</div></td><td class="r num">${fmt(Math.abs(a-b))}</td><td class="r num">${esc(r.pst)}%</td></tr>`; }).join('')}
     <tr class="u-tot"><td>Total</td><td class="r num">${fmt(tA)}</td><td class="r num">${pct(tA,tV)}</td><td class="r num">${fmt(tB)}</td><td class="r num">${pct(tB,tV)}</td><td></td><td class="r num">${fmt(Math.abs(tA-tB))}</td><td></td></tr></tbody></table></div></details></section>`;
 }
@@ -301,6 +322,7 @@ function render(){
   let h=`<div class="lado">${gov}${pres}</div>`;
   if(st.data) h+=`<h2 class="sec-t">Detalhes de ${esc(K().nome)} · ${esc(ufNome)}</h2><div class="grid2">${blocoMun()}${blocoMapa()}</div>`;
   $('#app').innerHTML=h;
+  $('#u-cargo').textContent=K().nome;
   preencherUrnas();
 }
 
@@ -312,9 +334,9 @@ async function carregar(){
     const [g,p,b]=await Promise.all([temGov?busca('gov',st.uf):null, busca('pres',st.uf), busca('pres','br')]);
     if(!g && !p) throw new Error('arquivos ainda não publicados ou sem internet.');
     st.dd={gov:g,pres:p}; if(b) st.br=b;
-    if(!st.dd[st.cargo]){ st.cargo=st.dd.pres?'pres':'gov'; document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.cargo===st.cargo)); }
+    if(!st.dd[st.cargo]){ st.cargo=st.dd.pres?'pres':'gov';  }
     st.data=st.dd[st.cargo]; render();
-    stEl.innerHTML=`<span class="dot"></span> Governador e Presidente atualizam juntos, sozinhos, a cada 30 segundos · <span id="cd"></span>`;
+    stEl.innerHTML=`<span class="dot"></span> Atualiza sozinho a cada 30 s · <span id="cd"></span>`;
     await Promise.all([carregarMun(), carregarSecoes(), carregarMapa()]); render();
   }catch(err){
     stEl.innerHTML=`<span class="dot err"></span> Não foi possível ler o TSE: ${esc(err.message)} Nova tentativa em 30 segundos.`;
@@ -381,76 +403,23 @@ async function buscarUrnas(){
   const secTxt=g=>g.secs.slice().sort((a,b)=>+a.s-+b.s).map(x=>`${+x.s} (${cs.map(c=>x.v[c.n]).join('×')})`).join(', ');
   const cab=cs.map(c=>`<th class="r">${esc(c.nome)}</th><th class="r">%</th>`).join('');
   out.innerHTML=`<div class="u-res">
-    <div class="u-top"><div><b>${esc(K().nome)}</b> · ${esc(M.nm)} · ${ondeZona} <span class="note">· ${lidas.length} seções lidas${pend?` · ${pend} ainda não apuradas`:''}${erros?` · ${erros} sem boletim publicado`:''}</span></div><button class="btn btn-pri" id="u-pdf">Exportar PDF</button></div>
+    <div class="u-top"><div><b>${esc(K().nome)}</b> · ${esc(M.nm)} · ${ondeZona} <span class="note">· ${lidas.length} seções lidas${pend?` · ${pend} ainda não apuradas`:''}${erros?` · ${erros} sem boletim publicado`:''}</span></div></div>
     <div class="mini">${cs.map(c=>`<div style="--c:${cor(c)}"><div class="lbl">${esc(c.nome)}</div><b>${pct(soma(c.n),totVal)}</b><div class="num">${fmt(soma(c.n))} votos</div></div>`).join('')}</div>
     <div class="lbl">Por local de votação · seção (${cs.map(c=>esc(c.nome)).join(' × ')})</div>
-    <div class="tbl-wrap"><table><thead><tr><th>Local</th><th>Seções</th>${cab}</tr></thead><tbody>${locais.map(g=>`<tr><td><b>${esc(g.nome)}</b>${g.end?`<div class="note">${esc(g.end)}</div>`:''}</td><td class="num">${secTxt(g)}</td>${cs.map(c=>`<td class="r num"><b>${fmt(g.v[c.n])}</b></td><td class="r num">${pct(g.v[c.n],g.val)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+    <div class="tbl-wrap"><table class="tlocal"><thead><tr><th>Local</th><th>Seções</th>${cab}</tr></thead><tbody>${locais.map(g=>`<tr><td><b>${esc(g.nome)}</b>${g.end?`<div class="note">${esc(g.end)}</div>`:''}</td><td class="num">${secTxt(g)}</td>${cs.map(c=>`<td class="r num"><b>${fmt(g.v[c.n])}</b></td><td class="r num">${pct(g.v[c.n],g.val)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
     <details class="falta"><summary><span class="lbl">Urna por urna</span> <b class="num">${secs.length} seções</b></summary>
-    <div class="tbl-wrap"><table><thead><tr><th>Zona</th><th>Seção</th><th>Local</th>${cs.map(c=>`<th class="r">${esc(c.nome)}</th>`).join('')}<th class="r">Brancos</th><th class="r">Nulos</th></tr></thead><tbody>${secs.slice().sort((a,b)=>(+a.z-+b.z)||(+a.s-+b.s)).map(x=>`<tr><td class="num">${+x.z}</td><td class="num">${+x.s}</td><td>${x.loc?esc(x.loc[0]):'—'}</td>${x.r?cs.map(c=>`<td class="r num"><b>${fmt(x.v[c.n])}</b></td>`).join('')+`<td class="r num">${fmt(x.b)}</td><td class="r num">${fmt(x.nl)}</td>`:`<td class="r note" colspan="${cs.length+2}">${x.ok?'boletim ainda não publicado':'não apurada'}</td>`}</tr>`).join('')}</tbody></table></div></details>
+    <div class="tbl-wrap"><table class="turna"><thead><tr><th>Zona</th><th>Seção</th><th>Local</th>${cs.map(c=>`<th class="r">${esc(c.nome)}</th>`).join('')}<th class="r">Brancos</th><th class="r">Nulos</th></tr></thead><tbody>${secs.slice().sort((a,b)=>(+a.z-+b.z)||(+a.s-+b.s)).map(x=>`<tr><td class="num">${+x.z}</td><td class="num">${+x.s}</td><td>${x.loc?esc(x.loc[0]):'—'}</td>${x.r?cs.map(c=>`<td class="r num"><b>${fmt(x.v[c.n])}</b></td>`).join('')+`<td class="r num">${fmt(x.b)}</td><td class="r num">${fmt(x.nl)}</td>`:`<td class="r note" colspan="${cs.length+2}">${x.ok?'boletim ainda não publicado':'não apurada'}</td>`}</tr>`).join('')}</tbody></table></div></details>
   </div>`;
-}
-
-/* ---------- PDFs ---------- */
-function novoPDF(titulo, sub){
-  const {jsPDF}=window.jspdf, doc=new jsPDF({unit:'mm',format:'a4'}), W=doc.internal.pageSize.getWidth(), M=14, agora=new Date();
-  doc.setFillColor(15,107,92); doc.rect(0,0,W,26,'F'); doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text(titulo,M,12);
-  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text(sub,M,20);
-  const base={theme:'grid',styles:{fontSize:8.5,cellPadding:1.8,textColor:30,lineColor:[220,224,220]},headStyles:{fillColor:[15,107,92],textColor:255,fontStyle:'bold'},margin:{left:M,right:M},
-    didDrawPage:()=>{ const h=doc.internal.pageSize.getHeight(); doc.setFontSize(7.5); doc.setTextColor(120);
-      doc.text(`Gerado em ${agora.toLocaleDateString('pt-BR')} às ${agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Fonte: TSE (resultados.tse.jus.br) · 2º turno 2026`,M,h-11);
-      doc.text('Números parciais até o fim da apuração.',M,h-8); doc.text(`Página ${doc.internal.getNumberOfPages()}`,W-M,h-8,{align:'right'}); }};
-  return {doc,base,M,W};
-}
-const rgb=h=>{ const n=parseInt((h||'#0f6b5c').slice(1),16); return [n>>16&255,n>>8&255,n&255]; };
-const nomeArq=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'_').toLowerCase()+'.pdf';
-function placarPDF(doc,M,cs,tot,y){
-  cs.forEach((c,i)=>{ const x=M+i*92; doc.setFillColor(...rgb(cor(c))); doc.rect(x,y,88,22,'F'); doc.setTextColor(255);
-    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.text(`${c.nome} (${c.n} · ${c.sg})`,x+3,y+6);
-    doc.setFontSize(18); doc.text(pct(c.v,tot),x+3,y+15); doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text(`${fmt(c.v)} votos`,x+3,y+20); });
-  doc.setTextColor(30); return y+28;
-}
-function pdfMapa(){
-  if(!window.jspdf||!MAPA.rows) return;
-  const cs=lerCands(st.data).sort((a,b)=>a.n.localeCompare(b.n,undefined,{numeric:true})), [A,B]=cs, ufNome=UFS.find(u=>u[0]===st.uf)[1];
-  const rows=MAPA.rows.slice().sort((x,y)=>(y.cs[A.n]+y.cs[B.n])-(x.cs[A.n]+x.cs[B.n])||x.nm.localeCompare(y.nm,'pt-BR'));
-  const tA=rows.reduce((t,r)=>t+r.cs[A.n],0), tB=rows.reduce((t,r)=>t+r.cs[B.n],0), tV=rows.reduce((t,r)=>t+r.vv,0);
-  const {doc,base,M}=novoPDF(`${K().nome} · ${ufNome} · 2º turno`,`Resultado por município · ${st.data.s?.pst||'0'}% das urnas apuradas no estado`);
-  let y=placarPDF(doc,M,[{...A,v:tA},{...B,v:tB}],tV,32);
-  const vA=rows.filter(r=>r.cs[A.n]>r.cs[B.n]).length, vB=rows.filter(r=>r.cs[B.n]>r.cs[A.n]).length;
-  doc.setFontSize(9); doc.setTextColor(90); doc.text(`${A.nome} vence em ${vA} municípios · ${B.nome} vence em ${vB} · total de ${rows.length} municípios`,M,y); y+=4;
-  doc.autoTable({...base,startY:y,head:[['Município',A.nome,'%',B.nome,'%','Diferença','Vence','Urnas']],
-    body:[...rows.map(r=>{ const a=r.cs[A.n]||0,b=r.cs[B.n]||0; return [r.nm,fmt(a),pct(a,r.vv),fmt(b),pct(b,r.vv),fmt(Math.abs(a-b)),a>b?A.nome:b>a?B.nome:'empate',r.pst+'%']; }),
-      ['TOTAL',fmt(tA),pct(tA,tV),fmt(tB),pct(tB,tV),fmt(Math.abs(tA-tB)),tA>tB?A.nome:tB>tA?B.nome:'empate','']],
-    columnStyles:{1:{halign:'right',fontStyle:'bold'},2:{halign:'right'},3:{halign:'right',fontStyle:'bold'},4:{halign:'right'},5:{halign:'right'},7:{halign:'right'}},
-    didParseCell:h=>{ if(h.section==='body'&&h.row.index===rows.length) h.cell.styles.fontStyle='bold'; if(h.section==='body'&&h.column.index===6&&h.row.index<rows.length){ const w=h.cell.raw===A.nome?A:h.cell.raw===B.nome?B:null; if(w){ h.cell.styles.textColor=rgb(cor(w)); h.cell.styles.fontStyle='bold'; } } }});
-  doc.save(nomeArq(`resultado_${st.cargo==='pres'?'presidente':'governador'}_municipios_${st.uf}`));
-}
-function pdfUrnas(){
-  const R=st.uLast; if(!R||!window.jspdf) return; const cs=R.cs;
-  const {doc,base,M}=novoPDF(`${R.cargoNome} · ${R.munNome}/${st.uf.toUpperCase()} · 2º turno`,`Votação por urna · ${R.ondeZona} · ${R.lidas.length} seções lidas${R.pend?` · ${R.pend} não apuradas`:''}`);
-  let y=placarPDF(doc,M,cs.map(c=>({...c,v:R.lidas.reduce((t,x)=>t+x.v[c.n],0)})),R.totVal,32);
-  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('Por local de votação',M,y+2); y+=4;
-  const secTxt=g=>g.secs.slice().sort((a,b)=>+a.s-+b.s).map(x=>`${+x.s} (${cs.map(c=>x.v[c.n]).join('x')})`).join(', ');
-  doc.autoTable({...base,startY:y,head:[['Local de votação',`Seção (${cs.map(c=>c.nome).join(' x ')})`,...cs.flatMap(c=>[c.nome,'%'])]],
-    body:R.locais.map(g=>[g.nome+(g.end?'\n'+g.end:''),secTxt(g),...cs.flatMap(c=>[fmt(g.v[c.n]),pct(g.v[c.n],g.val)])]),
-    columnStyles:{0:{cellWidth:62},1:{cellWidth:46},2:{halign:'right',fontStyle:'bold'},3:{halign:'right'},4:{halign:'right',fontStyle:'bold'},5:{halign:'right'}}});
-  y=doc.lastAutoTable.finalY+8; if(y>270){ doc.addPage(); y=20; }
-  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(30); doc.text('Urna por urna',M,y); y+=2;
-  doc.autoTable({...base,startY:y,head:[['Zona','Seção','Local de votação',...cs.map(c=>c.nome),'Brancos','Nulos']],
-    body:R.secs.slice().sort((a,b)=>(+a.z-+b.z)||(+a.s-+b.s)).map(x=>[+x.z,+x.s,x.loc?x.loc[0]:'—',...(x.r?[...cs.map(c=>fmt(x.v[c.n])),fmt(x.b),fmt(x.nl)]:[x.ok?'sem boletim':'não apurada',...cs.slice(1).map(()=>''),'',''])]),
-    columnStyles:{0:{halign:'right'},1:{halign:'right'},3:{halign:'right',fontStyle:'bold'},4:{halign:'right',fontStyle:'bold'},5:{halign:'right'},6:{halign:'right'}}});
-  doc.save(nomeArq(`${st.cargo==='pres'?'presidente':'governador'}_urnas_${R.munNome}`));
 }
 
 /* ---------- Eventos ---------- */
 $('#app').addEventListener('change',e=>{ if(e.target.id!=='mun') return; st.mun=e.target.value; save(); carregarMun().then(render); });
 $('#app').addEventListener('toggle',e=>{ if(e.target.matches('details.falta')&&e.target.closest('.mun')) st.faltaOpen=e.target.open; },true);
-$('#app').addEventListener('click',e=>{ const pl=e.target.closest('.placar[data-cargo]'); if(pl && !e.target.closest('a,button')){ setCargo(pl.dataset.cargo); return; } const fr=e.target.closest('.frow'); if(fr){ st.mun=fr.dataset.mun; save(); carregarMun().then(render); } if(e.target.id==='pdf-mapa') pdfMapa(); });
+$('#app').addEventListener('click',e=>{ const pl=e.target.closest('.placar[data-cargo]'); if(pl && !e.target.closest('a,button')){ setCargo(pl.dataset.cargo); return; } const fr=e.target.closest('.frow'); if(fr){ st.mun=fr.dataset.mun; save(); carregarMun().then(render); } });
 $('#u-mun').addEventListener('change',preencherZonas);
 $('#u-go').addEventListener('click',buscarUrnas);
-$('#u-out').addEventListener('click',e=>{ if(e.target.id==='u-pdf') pdfUrnas(); });
-function setCargo(c){ if(c===st.cargo) return; st.cargo=c; save(); document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.cargo===c)); st.data=st.dd?.[c]||null; st.munData=null; MAPA={key:'',t:0,rows:null}; $('#u-out').innerHTML='<span class="note">Escolha o município e a zona.</span>'; $('#u-mun').dataset.sig=''; render(); Promise.all([carregarMun(),carregarMapa()]).then(render); }
-document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>setCargo(b.dataset.cargo)));
+function setCargo(c){ if(c===st.cargo) return; st.cargo=c; save();  st.data=st.dd?.[c]||null; st.munData=null; MAPA={key:'',t:0,rows:null}; $('#u-out').innerHTML='<span class="note">Escolha o município e a zona.</span>'; $('#u-mun').dataset.sig=''; render(); Promise.all([carregarMun(),carregarMapa()]).then(render); }
+
 // Só os estados com 2º turno (para Governador); a lista é confirmada na configuração do TSE
 st.govUFs=['ac','am','df','es','rn','to'];
 const sel=$('#uf');
@@ -458,7 +427,7 @@ function montarUFs(){ const l=UFS.filter(([k])=>st.govUFs.includes(k)); if(!st.g
 montarUFs();
 sel.addEventListener('change',()=>{ st.uf=sel.value; st.mun=''; st.munData=null; corMap={}; save(); st.data=null; st.dd=null; MAPA={key:'',t:0,rows:null}; $('#u-mun').dataset.sig=''; carregar(); });
 $('#refresh').addEventListener('click',carregar);
-document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.cargo===st.cargo));
+
 // Estados com 2º turno para governador (da configuração do TSE)
 fetch(`${TSE.replace('/'+CICLO,'')}/comum/config/ele-c.json`).then(r=>r.json()).then(c=>{ const e=c.pl.flatMap(p=>p.e).find(x=>x.cd==='6260'); if(e&&e.abr.length){ st.govUFs=e.abr.map(a=>a.cd); montarUFs(); } }).catch(()=>{}).finally(carregar);
 </script>
