@@ -111,8 +111,12 @@ tr.u-tot td{border-top:2px solid var(--ink);font-weight:700}
 .placar.ativo{border:2px solid var(--accent);cursor:default}
 .prog.big{height:8px}
 .brasil{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:6px}
+.fx-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.fx-c{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 14px;font-size:.88rem}
 .barra.fina{height:10px}
 .sec-t{margin-top:6px}
+.nmS{display:none}
+.mn{display:flex;align-items:baseline;gap:6px}.mn .win{margin-right:0;flex:none}
 .dica{font-size:.78rem;color:var(--accent);font-weight:600}
 /* ---- Celular ---- */
 @media (max-width:620px){
@@ -138,7 +142,11 @@ tr.u-tot td{border-top:2px solid var(--ink);font-weight:700}
   .frow{padding:10px 2px}
   table{font-size:.8rem} th,td{padding:7px 6px}
   .tmapa th:nth-child(3),.tmapa td:nth-child(3),.tmapa th:nth-child(5),.tmapa td:nth-child(5),.tmapa th:nth-child(8),.tmapa td:nth-child(8){display:none}
-  .tmapa .mbar{min-width:50px}
+  .tmapa th:nth-child(6),.tmapa td:nth-child(6){display:none}
+  .tmapa .nmL{display:none} .tmapa .nmS{display:inline}
+  .tmapa th{white-space:normal}
+  .tmapa th,.tmapa td{padding:7px 4px}
+  .fx-c{font-size:.8rem}
   .tlocal td:nth-child(2){font-size:.72rem}
   .u-form{gap:8px} .u-f select{font-size:16px}
   .rules{font-size:.82rem}
@@ -150,7 +158,7 @@ tr.u-tot td{border-top:2px solid var(--ink);font-weight:700}
   <header class="top">
     <div>
       <h1>Apuração 2º Turno 2026</h1>
-      <div class="sub">Presidente e Governador, com resultado por município, seções pendentes e votos urna por urna. Dados ao vivo do TSE.</div>
+      <div class="sub">Presidente e Governador, com resultado por município e seções pendentes. Dados ao vivo do TSE.</div>
     </div>
     <div class="controls">
       <select id="uf" aria-label="Estado"></select>
@@ -160,15 +168,6 @@ tr.u-tot td{border-top:2px solid var(--ink);font-weight:700}
   <div class="status" id="status"><span class="dot"></span> Carregando dados do TSE…</div>
   <div id="app"></div>
 
-  <section class="panel" id="urnas">
-    <div class="panel-h"><h2>Votos por zona e urna · <span id="u-cargo">Governador</span></h2><span class="note">lido do boletim de cada urna, publicado pelo TSE</span></div>
-    <div class="u-form">
-      <label class="u-f"><span class="lbl">Município</span><select id="u-mun"></select></label>
-      <label class="u-f"><span class="lbl">Zona</span><select id="u-zona"></select></label>
-      <button class="btn btn-pri" id="u-go">Buscar votos</button>
-    </div>
-    <div id="u-out" class="note">Escolha o município e a zona. Mostra os dois candidatos lado a lado. Para trocar o cargo, toque no placar de Governador ou de Presidente.</div>
-  </section>
 
   <section class="panel rules">
     <h2>Como funciona</h2>
@@ -207,6 +206,8 @@ function lerCands(d,k=st.cargo){
 let corMap={};
 function cor(c){ const kk=c.k||st.cargo, id=kk+'-'+c.n; if(corMap[id]) return corMap[id]; const usadas=Object.entries(corMap).filter(([x])=>x.startsWith(kk+'-')).map(([,v])=>v); let k=CORES[c.sg?.toUpperCase()]; if(!k||usadas.includes(k)) k=EXTRA.find(x=>!usadas.includes(x))||'#777'; return corMap[id]=k; }
 const foto=c=>`${TSE}/${CARGOS[c.k||st.cargo].ele}/fotos/${(c.k||st.cargo)==='pres'?'br':st.uf}/${c.sq}.jpeg`;
+const TITULOS=['PROFESSORA','PROFESSOR','DR','DR.','DRA','DRA.','DOUTOR','DOUTORA','CORONEL','DELEGADO','DELEGADA','PASTOR','PASTORA','CAPITAO','CAPITÃO','SARGENTO','CABO','IRMÃ','IRMAO','IRMÃO'];
+const curto=n=>(String(n).split(/\s+/).find(w=>!TITULOS.includes(w))||n);
 const porNumero=cs=>cs.slice().sort((a,b)=>a.n.localeCompare(b.n,undefined,{numeric:true}));
 
 /* ---------- Placar (um por cargo, lado a lado) ---------- */
@@ -229,11 +230,12 @@ function placar(d, k, titulo, extra=''){
     <div class="mun-meta"><span><b class="num">${fmt(num(v.vv))}</b> válidos</span><span><b class="num">${fmt(num(v.vb))}</b> brancos (${esc(v.pvb||'0')}%)</span><span><b class="num">${fmt(num(v.tvn))}</b> nulos (${esc(v.ptvn||'0')}%)</span><span><b class="num">${fmt(num(e.a))}</b> abstenções (${esc(e.pa||'0')}%)</span></div>
     ${extra}</section>`;
 }
-function linhaBrasil(br){
-  const cs=porNumero(lerCands(br,'pres')), vv=num(br.v?.vv);
-  return `<div class="brasil"><div class="lbl">Brasil · ${esc(br.s?.pst||'0')}% das urnas</div>
+function faixaTotal(d,rotulo){
+  if(!d) return `<div class="brasil"><div class="lbl">${esc(rotulo)}</div><div class="note">Carregando…</div></div>`;
+  const cs=porNumero(lerCands(d,'pres')), vv=num(d.v?.vv);
+  return `<div class="brasil"><div class="fx-h"><span class="lbl">${esc(rotulo)}</span><span class="note"><b class="num">${esc(d.s?.pst||'0')}%</b> das urnas</span></div>
     <div class="barra fina">${vv?cs.map(c=>`<i style="width:${100*c.votos/vv}%;background:${cor(c)}"></i>`).join(''):''}</div>
-    <div class="mun-meta">${cs.map(c=>`<span><i class="win" style="background:${cor(c)}"></i><b>${esc(c.nome)}</b> <b class="num">${pct(c.votos,vv)}</b> <span class="num">(${fmt(c.votos)})</span></span>`).join('')}</div></div>`;
+    <div class="fx-c">${cs.map(c=>`<div><i class="win" style="background:${cor(c)}"></i><b>${esc(c.nome)}</b> <b class="num">${pct(c.votos,vv)}</b> <span class="num note">${fmt(c.votos)} votos</span></div>`).join('')}</div></div>`;
 }
 
 /* ---------- Município ---------- */
@@ -299,17 +301,16 @@ async function carregarMapa(){
   if(rows.length && key===st.uf+st.cargo){ MAPA={key,t:Date.now(),rows}; }
 }
 function blocoMapa(){
-  if(!st.data||!MAPA.rows||MAPA.key!==st.uf+st.cargo) return `<section class="panel"><div class="panel-h"><h2>Quem vence em cada município</h2></div><div class="note">Carregando os municípios…</div></section>`;
+  if(!st.data||!MAPA.rows||MAPA.key!==st.uf+st.cargo) return `<section class="panel"><div class="panel-h"><h2>Votos por município</h2></div><div class="note">Carregando os municípios…</div></section>`;
   const cs=lerCands(st.data).sort((a,b)=>a.n.localeCompare(b.n,undefined,{numeric:true})); if(cs.length<2) return '';
   const [A,B]=cs, rows=MAPA.rows.slice().sort((x,y)=>(y.cs[A.n]+y.cs[B.n])-(x.cs[A.n]+x.cs[B.n])||x.nm.localeCompare(y.nm,'pt-BR'));
   const vence=n=>rows.filter(r=>r.cs[n]>(r.cs[n===A.n?B.n:A.n])).length;
   const tA=rows.reduce((t,r)=>t+r.cs[A.n],0), tB=rows.reduce((t,r)=>t+r.cs[B.n],0), tV=rows.reduce((t,r)=>t+r.vv,0);
-  return `<section class="panel"><div class="panel-h"><h2>Quem vence em cada município</h2></div>
+  return `<section class="panel"><div class="panel-h"><h2>Votos por município · ${esc(UFS.find(u=>u[0]===st.uf)[1])}</h2></div>
     <div class="mun-meta"><span><i class="win" style="background:${cor(A)}"></i><b>${esc(A.nome)}</b> vence em <b class="num">${vence(A.n)}</b></span><span><i class="win" style="background:${cor(B)}"></i><b>${esc(B.nome)}</b> vence em <b class="num">${vence(B.n)}</b></span><span>de ${rows.length} municípios</span></div>
-    <details class="falta"${innerWidth>620?' open':''}><summary><span class="lbl">Votos em cada município</span> <span class="dica">tabela completa</span></summary>
-    <div class="tbl-wrap"><table class="tmapa"><thead><tr><th>Município</th><th class="r">${esc(A.nome)}</th><th class="r">%</th><th class="r">${esc(B.nome)}</th><th class="r">%</th><th>Placar</th><th class="r">Diferença</th><th class="r">Urnas</th></tr></thead><tbody>
-    ${rows.map(r=>{ const a=r.cs[A.n]||0,b=r.cs[B.n]||0,w=a>b?A:b>a?B:null; return `<tr${r.cd===st.mun?' class="u-sel"':''}><td>${w?`<i class="win" style="background:${cor(w)}"></i>`:'<i class="win"></i>'}${esc(r.nm)}</td><td class="r num">${fmt(a)}</td><td class="r num">${pct(a,r.vv)}</td><td class="r num">${fmt(b)}</td><td class="r num">${pct(b,r.vv)}</td><td><div class="mbar">${r.vv?`<i style="width:${100*a/r.vv}%;background:${cor(A)}"></i><i style="width:${100*b/r.vv}%;background:${cor(B)}"></i>`:''}</div></td><td class="r num">${fmt(Math.abs(a-b))}</td><td class="r num">${esc(r.pst)}%</td></tr>`; }).join('')}
-    <tr class="u-tot"><td>Total</td><td class="r num">${fmt(tA)}</td><td class="r num">${pct(tA,tV)}</td><td class="r num">${fmt(tB)}</td><td class="r num">${pct(tB,tV)}</td><td></td><td class="r num">${fmt(Math.abs(tA-tB))}</td><td></td></tr></tbody></table></div></details></section>`;
+        <div class="tbl-wrap"><table class="tmapa"><thead><tr><th>Município</th><th class="r"><span class="nmL">${esc(A.nome)}</span><span class="nmS"><i class="win" style="background:${cor(A)}"></i>${esc(curto(A.nome))}</span></th><th class="r">%</th><th class="r"><span class="nmL">${esc(B.nome)}</span><span class="nmS"><i class="win" style="background:${cor(B)}"></i>${esc(curto(B.nome))}</span></th><th class="r">%</th><th>Placar</th><th class="r"><span class="nmL">Diferença</span><span class="nmS">Dif.</span></th><th class="r">Urnas</th></tr></thead><tbody>
+    ${rows.map(r=>{ const a=r.cs[A.n]||0,b=r.cs[B.n]||0,w=a>b?A:b>a?B:null; return `<tr${r.cd===st.mun?' class="u-sel"':''}><td><span class="mn">${w?`<i class="win" style="background:${cor(w)}"></i>`:'<i class="win"></i>'}<span>${esc(r.nm)}</span></span></td><td class="r num">${fmt(a)}</td><td class="r num">${pct(a,r.vv)}</td><td class="r num">${fmt(b)}</td><td class="r num">${pct(b,r.vv)}</td><td><div class="mbar">${r.vv?`<i style="width:${100*a/r.vv}%;background:${cor(A)}"></i><i style="width:${100*b/r.vv}%;background:${cor(B)}"></i>`:''}</div></td><td class="r num">${fmt(Math.abs(a-b))}</td><td class="r num">${esc(r.pst)}%</td></tr>`; }).join('')}
+    <tr class="u-tot"><td>Total</td><td class="r num">${fmt(tA)}</td><td class="r num">${pct(tA,tV)}</td><td class="r num">${fmt(tB)}</td><td class="r num">${pct(tB,tV)}</td><td></td><td class="r num">${fmt(Math.abs(tA-tB))}</td><td></td></tr></tbody></table></div></section>`;
 }
 
 /* ---------- Render ---------- */
@@ -318,12 +319,10 @@ function render(){
   if(!dd.gov && !dd.pres) return;
   const gov = dd.gov ? placar(dd.gov,'gov',`Governador · ${ufNome}`)
     : `<section class="panel"><div class="panel-h"><h2>Governador · ${esc(ufNome)}</h2></div><div class="note">Não há segundo turno para Governador neste estado${st.govUFs?`. Estados com 2º turno: ${st.govUFs.map(u=>UFS.find(x=>x[0]===u)?.[1]||u).join(', ')}`:''}.</div></section>`;
-  const pres = dd.pres ? placar(dd.pres,'pres',`Presidente · ${ufNome}`, st.br?linhaBrasil(st.br):'') : '';
+  const pres = dd.pres ? placar(dd.pres,'pres',`Presidente · ${ufNome}`, faixaTotal(st.br,'Total geral · Brasil')+faixaTotal(dd.pres,`Total · ${ufNome}`)) : '';
   let h=`<div class="lado">${gov}${pres}</div>`;
-  if(st.data) h+=`<h2 class="sec-t">Detalhes de ${esc(K().nome)} · ${esc(ufNome)}</h2><div class="grid2">${blocoMun()}${blocoMapa()}</div>`;
+  if(st.data) h+=`<h2 class="sec-t">Detalhes de ${esc(K().nome)} · ${esc(ufNome)}</h2>${blocoMun()}${blocoMapa()}`;
   $('#app').innerHTML=h;
-  $('#u-cargo').textContent=K().nome;
-  preencherUrnas();
 }
 
 async function carregar(){
@@ -346,86 +345,18 @@ async function carregar(){
 }
 setInterval(()=>{ const left=Math.max(0,Math.round((st.next-Date.now())/1000)); const cd=$('#cd'); if(cd) cd.textContent=`próxima em ${left}s`; if(st.next&&left===0){ st.next=0; carregar(); } },1000);
 
-/* ---------- Votos por urna: boletim de urna (bu.dat, ASN.1 DER) ---------- */
-const BU=new Map();
-function derKids(b,s,e){ const out=[]; let i=s; while(i<e){ const t=b[i++]; let n=t&31; if(n===31){ n=0; let x; do{ x=b[i++]; n=n*128+(x&127); }while(x&128); } let l=b[i++]; if(l&128){ const k=l&127; l=0; for(let j=0;j<k;j++) l=l*256+b[i++]; } if(!(i+l<=e)) throw new Error('der'); out.push({c:t>>6,k:(t>>5)&1,n,s:i,e:i+l}); i+=l; } return out; }
-function derInt(b,x){ let v=0; for(let i=x.s;i<x.e;i++) v=v*256+b[i]; if(x.e>x.s&&b[x.s]&128) v-=Math.pow(256,x.e-x.s); return v; }
-function lerBU(b){
-  const res={};
-  const walk=(s,e)=>{ const ch=derKids(b,s,e);
-    if(ch.length>=3&&ch[0].c===2&&!ch[0].k&&ch[0].n===1&&ch[1].c===0&&!ch[1].k&&ch[1].n===2&&ch[2].k&&ch[2].n===16){
-      const d=res[derInt(b,ch[0])]||={};
-      for(const ent of derKids(b,ch[2].s,ch[2].e)){ let tipo=0,q=0,cod=null;
-        for(const x of derKids(b,ent.s,ent.e)){ if(x.c===2&&!x.k&&x.n===1) tipo=derInt(b,x); else if(x.c===2&&!x.k&&x.n===2) q=derInt(b,x); else if(x.c===2&&x.k&&x.n===3){ const id=derKids(b,x.s,x.e); cod=derInt(b,id[id.length-1]); } }
-        const key=tipo===1?String(cod):tipo===4?'L'+cod:tipo===2?'B':tipo===3?'N':'X'+tipo; d[key]=(d[key]||0)+q; }
-      return; }
-    for(const x of ch){ if(x.k) walk(x.s,x.e); else if(x.c===0&&x.n===4&&x.e-x.s>50){ try{ walk(x.s,x.e); }catch(_){} } } };
-  walk(0,b.length); return res;
-}
-async function buSecao(uf,mun,z,s){
-  const key=`${uf}-${mun}-${z}-${s}`; if(BU.has(key)) return BU.get(key);
-  const p=`${TSE}/arquivo-urna/${PLEITO}/dados/${uf}/${mun}/${z}/${s}`;
-  const ra=await fetch(`${p}/p00${PLEITO}-${uf}-m${mun}-z${z}-s${s}-aux.json`,{cache:'no-store'}); if(!ra.ok) return null;
-  for(const h of ((await ra.json()).hashes||[]).slice().reverse()){ if(/xclu/i.test(h.st||'')) continue; const f=(h.arq||[]).find(x=>x.tp==='bu'); if(!f) continue;
-    const r=await fetch(`${p}/${h.hash}/${f.nm}`); if(!r.ok) continue; const res=lerBU(new Uint8Array(await r.arrayBuffer())); BU.set(key,res); return res; }
-  return null;
-}
-function preencherUrnas(){
-  const ms=$('#u-mun'), lista=munLista();
-  if(lista.length && ms.dataset.sig!==st.uf+K().ele){ ms.innerHTML=lista.map(m=>`<option value="${m.cd}">${esc(m.nm)}</option>`).join(''); ms.value=st.mun||lista[0].cd; ms.dataset.sig=st.uf+K().ele; ms.dataset.zsig=''; }
-  preencherZonas();
-}
-function preencherZonas(){
-  const ms=$('#u-mun'), zs=$('#u-zona'), M=st.secoes?.uf===st.uf&&st.secoes.mu.find(x=>x.cd===ms.value);
-  const sig=ms.value+(M?M.zon.length:0); if(!M||ms.dataset.zsig===sig) return; const atual=zs.value;
-  zs.innerHTML=(M.zon.length>1?`<option value="">Todas as zonas</option>`:'')+M.zon.map(z=>`<option value="${z.cd}">Zona ${+z.cd} (${z.sec.filter(s=>!s.nsp).length} seções)</option>`).join('');
-  if([...zs.options].some(o=>o.value===atual)) zs.value=atual; ms.dataset.zsig=sig;
-}
-async function buscarUrnas(){
-  const out=$('#u-out'); if(!st.data){ out.textContent='Aguarde os dados do TSE carregarem.'; return; }
-  const uf=st.uf, mun=$('#u-mun').value, zona=$('#u-zona').value, cargo=K().cd;
-  const M=st.secoes?.uf===uf&&st.secoes.mu.find(x=>x.cd===mun); if(!M){ out.textContent='A lista de seções do TSE ainda não carregou. Tente de novo em instantes.'; return; }
-  const cs=lerCands(st.data).sort((a,b)=>a.n.localeCompare(b.n,undefined,{numeric:true}));
-  const secs=[]; M.zon.forEach(z=>{ if(zona&&z.cd!==zona) return; z.sec.forEach(s=>{ if(!s.nsp) secs.push({z:z.cd,s:s.ns,ok:!!s.da}); }); });
-  const run=st.uRun=(st.uRun||0)+1, fila=secs.filter(x=>x.ok); let feitas=0;
-  const prog=()=>{ out.innerHTML=`<div class="note">Lendo boletins de urna… <b class="num">${feitas} de ${fila.length}</b></div><div class="prog"><i style="width:${fila.length?100*feitas/fila.length:100}%"></i></div>`; };
-  prog();
-  await Promise.all([...Array(8)].map(async()=>{ while(fila.length&&run===st.uRun){ const x=fila.shift(); try{ x.r=await buSecao(uf,mun,x.z,x.s); }catch(e){} feitas++; if(run===st.uRun) prog(); } }));
-  if(run!==st.uRun) return;
-  const L=(typeof LOCAIS!=='undefined'&&LOCAIS.uf===uf)?LOCAIS:null;
-  secs.forEach(x=>{ const d=x.r?.[cargo]||{}; x.v={}; cs.forEach(c=>x.v[c.n]=d[c.n]||0); x.b=d.B||0; x.nl=d.N||0; x.val=cs.reduce((t,c)=>t+x.v[c.n],0); const inf=L?.sec?.[mun]?.[+x.z]?.[+x.s]; x.loc=inf?L.locais[inf[0]]:null; });
-  const lidas=secs.filter(x=>x.r), soma=n=>lidas.reduce((t,x)=>t+x.v[n],0), totVal=lidas.reduce((t,x)=>t+x.val,0);
-  const pend=secs.filter(x=>!x.ok).length, erros=secs.filter(x=>x.ok&&!x.r).length;
-  const porLocal=new Map(); lidas.forEach(x=>{ const k=x.loc?x.loc[0]+'|'+x.loc[1]:'Zona '+(+x.z); const g=porLocal.get(k)||{nome:x.loc?x.loc[0]:'Local não identificado',end:x.loc?x.loc[1]:'',secs:[],v:{},val:0}; g.secs.push(x); cs.forEach(c=>g.v[c.n]=(g.v[c.n]||0)+x.v[c.n]); g.val+=x.val; porLocal.set(k,g); });
-  const locais=[...porLocal.values()].sort((a,b)=>b.val-a.val||a.nome.localeCompare(b.nome));
-  const ondeZona=zona?`zona ${+zona}`:'todas as zonas';
-  st.uLast={cs,mun,munNome:M.nm,zona,ondeZona,lidas,secs,pend,erros,locais,totVal,cargoNome:K().nome};
-  const secTxt=g=>g.secs.slice().sort((a,b)=>+a.s-+b.s).map(x=>`${+x.s} (${cs.map(c=>x.v[c.n]).join('×')})`).join(', ');
-  const cab=cs.map(c=>`<th class="r">${esc(c.nome)}</th><th class="r">%</th>`).join('');
-  out.innerHTML=`<div class="u-res">
-    <div class="u-top"><div><b>${esc(K().nome)}</b> · ${esc(M.nm)} · ${ondeZona} <span class="note">· ${lidas.length} seções lidas${pend?` · ${pend} ainda não apuradas`:''}${erros?` · ${erros} sem boletim publicado`:''}</span></div></div>
-    <div class="mini">${cs.map(c=>`<div style="--c:${cor(c)}"><div class="lbl">${esc(c.nome)}</div><b>${pct(soma(c.n),totVal)}</b><div class="num">${fmt(soma(c.n))} votos</div></div>`).join('')}</div>
-    <div class="lbl">Por local de votação · seção (${cs.map(c=>esc(c.nome)).join(' × ')})</div>
-    <div class="tbl-wrap"><table class="tlocal"><thead><tr><th>Local</th><th>Seções</th>${cab}</tr></thead><tbody>${locais.map(g=>`<tr><td><b>${esc(g.nome)}</b>${g.end?`<div class="note">${esc(g.end)}</div>`:''}</td><td class="num">${secTxt(g)}</td>${cs.map(c=>`<td class="r num"><b>${fmt(g.v[c.n])}</b></td><td class="r num">${pct(g.v[c.n],g.val)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
-    <details class="falta"><summary><span class="lbl">Urna por urna</span> <b class="num">${secs.length} seções</b></summary>
-    <div class="tbl-wrap"><table class="turna"><thead><tr><th>Zona</th><th>Seção</th><th>Local</th>${cs.map(c=>`<th class="r">${esc(c.nome)}</th>`).join('')}<th class="r">Brancos</th><th class="r">Nulos</th></tr></thead><tbody>${secs.slice().sort((a,b)=>(+a.z-+b.z)||(+a.s-+b.s)).map(x=>`<tr><td class="num">${+x.z}</td><td class="num">${+x.s}</td><td>${x.loc?esc(x.loc[0]):'—'}</td>${x.r?cs.map(c=>`<td class="r num"><b>${fmt(x.v[c.n])}</b></td>`).join('')+`<td class="r num">${fmt(x.b)}</td><td class="r num">${fmt(x.nl)}</td>`:`<td class="r note" colspan="${cs.length+2}">${x.ok?'boletim ainda não publicado':'não apurada'}</td>`}</tr>`).join('')}</tbody></table></div></details>
-  </div>`;
-}
-
 /* ---------- Eventos ---------- */
 $('#app').addEventListener('change',e=>{ if(e.target.id!=='mun') return; st.mun=e.target.value; save(); carregarMun().then(render); });
 $('#app').addEventListener('toggle',e=>{ if(e.target.matches('details.falta')&&e.target.closest('.mun')) st.faltaOpen=e.target.open; },true);
 $('#app').addEventListener('click',e=>{ const pl=e.target.closest('.placar[data-cargo]'); if(pl && !e.target.closest('a,button')){ setCargo(pl.dataset.cargo); return; } const fr=e.target.closest('.frow'); if(fr){ st.mun=fr.dataset.mun; save(); carregarMun().then(render); } });
-$('#u-mun').addEventListener('change',preencherZonas);
-$('#u-go').addEventListener('click',buscarUrnas);
-function setCargo(c){ if(c===st.cargo) return; st.cargo=c; save();  st.data=st.dd?.[c]||null; st.munData=null; MAPA={key:'',t:0,rows:null}; $('#u-out').innerHTML='<span class="note">Escolha o município e a zona.</span>'; $('#u-mun').dataset.sig=''; render(); Promise.all([carregarMun(),carregarMapa()]).then(render); }
+function setCargo(c){ if(c===st.cargo) return; st.cargo=c; save();  st.data=st.dd?.[c]||null; st.munData=null; MAPA={key:'',t:0,rows:null}; render(); Promise.all([carregarMun(),carregarMapa()]).then(render); }
 
 // Só os estados com 2º turno (para Governador); a lista é confirmada na configuração do TSE
 st.govUFs=['ac','am','df','es','rn','to'];
 const sel=$('#uf');
 function montarUFs(){ const l=UFS.filter(([k])=>st.govUFs.includes(k)); if(!st.govUFs.includes(st.uf)) st.uf=st.govUFs.includes('am')?'am':l[0][0]; sel.innerHTML=l.map(([k,n])=>`<option value="${k}">${n}</option>`).join(''); sel.value=st.uf; }
 montarUFs();
-sel.addEventListener('change',()=>{ st.uf=sel.value; st.mun=''; st.munData=null; corMap={}; save(); st.data=null; st.dd=null; MAPA={key:'',t:0,rows:null}; $('#u-mun').dataset.sig=''; carregar(); });
+sel.addEventListener('change',()=>{ st.uf=sel.value; st.mun=''; st.munData=null; corMap={}; save(); st.data=null; st.dd=null; MAPA={key:'',t:0,rows:null}; carregar(); });
 $('#refresh').addEventListener('click',carregar);
 
 // Estados com 2º turno para governador (da configuração do TSE)
