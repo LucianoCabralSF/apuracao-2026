@@ -137,6 +137,10 @@ tr.u-tot td{border-top:2px solid var(--ink);font-weight:700}
 .tmapa tr.u-tot td{border-top:2px solid var(--ink);border-bottom:0}
 .tmapa tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--line) 25%,var(--surface))}
 .tmapa tbody tr.u-sel td{background:var(--accent-soft)}
+.tmapa td.lead{background:color-mix(in srgb,var(--c) 24%,var(--surface))!important;font-weight:700;color:var(--ink);box-shadow:inset 4px 0 0 var(--c)}
+.tmapa td.lead-p{box-shadow:none}
+.tmapa .seta{color:var(--c);font-size:.7em;margin-right:4px;vertical-align:1px}
+.tmapa tbody tr:hover td{filter:brightness(.97)}
 .nmS{display:none}
 .mn{display:flex;align-items:baseline;gap:6px}.mn .win{margin-right:0;flex:none}
 .dica{font-size:.78rem;color:var(--accent);font-weight:600}
@@ -328,6 +332,7 @@ async function carregarMapa(){
       const cs={}; lerCands(d).forEach(c=>cs[c.n]=c.votos); rows.push({cd:m.cd,nm:m.nm,cs,vv:num(d.v?.vv),pst:d.s?.pst||'0'}); }catch(e){} } }));
   if(rows.length && key===st.uf+st.cargo){ MAPA={key,t:Date.now(),rows}; }
 }
+const cel=(v,vv,c,w)=>{ const ld=w===c; return `<td class="r num${ld?' lead':''}"${ld?` style="--c:${cor(c)}"`:''}>${ld?'<span class="seta">▲</span>':''}${fmt(v)}</td><td class="r num${ld?' lead lead-p':''}"${ld?` style="--c:${cor(c)}"`:''}>${pct(v,vv)}</td>`; };
 function blocoMapa(){
   if(!st.data||!MAPA.rows||MAPA.key!==st.uf+st.cargo) return `<section class="panel"><div class="panel-h"><h2>Votos por município</h2></div><div class="note">Carregando os municípios…</div></section>`;
   const cs=lerCands(st.data).sort((a,b)=>a.n.localeCompare(b.n,undefined,{numeric:true})); if(cs.length<2) return '';
@@ -337,7 +342,7 @@ function blocoMapa(){
   return `<section class="panel"><div class="panel-h"><h2>Votos por município · ${esc(UFS.find(u=>u[0]===st.uf)[1])}</h2></div>
     <div class="mun-meta"><span><i class="win" style="background:${cor(A)}"></i><b>${esc(A.nome)}</b> vence em <b class="num">${vence(A.n)}</b></span><span><i class="win" style="background:${cor(B)}"></i><b>${esc(B.nome)}</b> vence em <b class="num">${vence(B.n)}</b></span><span>de ${rows.length} municípios</span></div>
         <div class="tmapa-wrap"><table class="tmapa"><thead><tr><th>Município</th><th class="r"><span class="nmL">${esc(A.nome)}</span><span class="nmS"><i class="win" style="background:${cor(A)}"></i>${esc(curto(A.nome))}</span></th><th class="r">%</th><th class="r"><span class="nmL">${esc(B.nome)}</span><span class="nmS"><i class="win" style="background:${cor(B)}"></i>${esc(curto(B.nome))}</span></th><th class="r">%</th><th>Placar</th><th class="r"><span class="nmL">% apuração</span><span class="nmS">% apur.</span></th></tr></thead><tbody>
-    ${rows.map(r=>{ const a=r.cs[A.n]||0,b=r.cs[B.n]||0,w=a>b?A:b>a?B:null; return `<tr${r.cd===st.mun?' class="u-sel"':''}><td><span class="mn">${w?`<i class="win" style="background:${cor(w)}"></i>`:'<i class="win"></i>'}<span>${esc(r.nm)}</span></span></td><td class="r num">${fmt(a)}</td><td class="r num">${pct(a,r.vv)}</td><td class="r num">${fmt(b)}</td><td class="r num">${pct(b,r.vv)}</td><td><div class="mbar">${r.vv?`<i style="width:${100*a/r.vv}%;background:${cor(A)}"></i><i style="width:${100*b/r.vv}%;background:${cor(B)}"></i>`:''}</div></td><td class="r num">${esc(r.pst)}%</td></tr>`; }).join('')}
+    ${rows.map(r=>{ const a=r.cs[A.n]||0,b=r.cs[B.n]||0,w=a>b?A:b>a?B:null; return `<tr${r.cd===st.mun?' class="u-sel"':''}><td><span class="mn">${w?`<i class="win" style="background:${cor(w)}"></i>`:'<i class="win"></i>'}<span>${esc(r.nm)}</span></span></td>${cel(a,r.vv,A,w)}${cel(b,r.vv,B,w)}<td><div class="mbar">${r.vv?`<i style="width:${100*a/r.vv}%;background:${cor(A)}"></i><i style="width:${100*b/r.vv}%;background:${cor(B)}"></i>`:''}</div></td><td class="r num">${esc(r.pst)}%</td></tr>`; }).join('')}
     <tr class="u-tot"><td>Total</td><td class="r num">${fmt(tA)}</td><td class="r num">${pct(tA,tV)}</td><td class="r num">${fmt(tB)}</td><td class="r num">${pct(tB,tV)}</td><td></td><td class="r num">${esc(st.data.s?.pst||'0')}%</td></tr></tbody></table></div></section>`;
 }
 
@@ -347,7 +352,7 @@ function render(){
   if(!dd.gov && !dd.pres) return;
   const gov = dd.gov ? placar(dd.gov,'gov',`Governador · ${ufNome}`)
     : `<section class="panel"><div class="panel-h"><h2>Governador · ${esc(ufNome)}</h2></div><div class="note">Não há segundo turno para Governador neste estado${st.govUFs?`. Estados com 2º turno: ${st.govUFs.map(u=>UFS.find(x=>x[0]===u)?.[1]||u).join(', ')}`:''}.</div></section>`;
-  const pres = dd.pres ? placar(dd.pres,'pres',`Presidente · ${ufNome}`, faixaTotal(st.br,'Total geral · Brasil')+faixaTotal(dd.pres,`Total · ${ufNome}`)) : '';
+  const pres = st.br ? placar(st.br,'pres','Presidente · Brasil', faixaTotal(dd.pres,`Total no ${ufNome}`)) : dd.pres ? placar(dd.pres,'pres',`Presidente · ${ufNome}`) : '';
   let h=`<div class="lado">${gov}${pres}</div>`;
   if(st.data) h+=`<h2 class="sec-t">Detalhes de ${esc(K().nome)} · ${esc(ufNome)}</h2>${blocoMun()}${blocoMapa()}`;
   $('#app').innerHTML=h;
